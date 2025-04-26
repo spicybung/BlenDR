@@ -217,7 +217,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 for i, geometry_ptr in enumerate(geometry_collection_ptrs):
                     print(f"\n🚀 Reading Geometry {i} at {hex(geometry_ptr)}")
 
-                    geo_vtable = self.jump_and_read_u16(f, geometry_ptr)
+                    geo_vtable = self.jump_and_read_u32(f, geometry_ptr)
                     print(f"  Geometry VTable: {hex(geo_vtable)}")
 
                     geometry_unk_1 = self.read_u32_from_stream(f)
@@ -243,7 +243,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     index_buffer_ptr = self.read_u16_from_stream(f)
                     print(f"  Index Buffer Pointer: {hex(index_buffer_ptr)}")
                     
-                    f.seek(4, 1) # What a bother - need to avoid doing this.
+                    f.seek(2, 1) # What a bother - need to avoid doing this.
 
                     geometry_unk_6 = self.read_u32_from_stream(f)
                     print(f"  Geometry Unknown 6: {geometry_unk_6}")

@@ -143,8 +143,8 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 print(f"📂 Geometry Collection Pointer (0x00): {hex(geometry_collection_ptr)}")
                 
 
-                geometry_collection_ptrs = []
-      
+                f.seek(2, 1)
+
 
                 # Seek to the next 4 bytes after the Geometry Collection Pointer
                 number_of_model_pointers_1 = self.read_u16_from_stream(f)
@@ -153,12 +153,12 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 print(f"📖 Number of Model Pointers 2 (0x{number_of_model_pointers_2 + 2:X}): {hex(number_of_model_pointers_2)}")
 
                 
-                simplearray_vector_ptr = self.read_u32_from_stream(f)
+                simplearray_vector_ptr = self.read_u16_from_stream(f)
                 
                 print(f"Pointer to SimpleArray(Vector4) (0x{simplearray_vector_ptr}): {hex(simplearray_vector_ptr)}")
-                
+      
                 f.seek(2, 1)
-                
+            
                 simplearray_integer_ptr = self.read_u16_from_stream(f)
                 
                 print(f"Pointer to SimpleArray(Integer) (0x{simplearray_integer_ptr}): {hex(simplearray_integer_ptr)}")
@@ -167,15 +167,15 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
             
                 # Read Unknown1 (2 bytes)
                 unknown1 = self.read_u16_from_stream(f)
-                print(f"🔍 Model Unknown1 (0x14): {hex(unknown1)}")
+                print(f"🔍 Model Unknown1 (0x14): {unknown1}")
 
                 # Read Unknown2 (2 bytes)
                 unknown2 = self.read_u16_from_stream(f)
-                print(f"🔍 Model Unknown2 (0x16): {hex(unknown2)}")
+                print(f"🔍 Model Unknown2 (0x16): {unknown2}")
 
                 # Read Unknown3 (2 bytes)
                 unknown3 = self.read_u16_from_stream(f)
-                print(f"🔍 Model Unknown3 (0x18): {hex(unknown3)}")
+                print(f"🔍 Model Unknown3 (0x18): {unknown3}")
 
                 # Read GeometryCount (2 bytes)
                 geometry_count = self.read_u16_from_stream(f)
@@ -207,6 +207,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     geometry_collection_ptrs.append(ptr)
                     print(f"📍 Geometry Array Pointer {i} read at {hex(geometry_collection_ptr + (i * 4))}: {hex(ptr)}")    
                     
+                geometry_vertex_buffers = []
+
+                    
                 print("--------------------------------------------------\n")
                 print("\n------------------------------------------------")
                 print("\n ...BEGIN READING GEOMETRIES...")
@@ -216,6 +219,8 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 
                 for i, geometry_ptr in enumerate(geometry_collection_ptrs):
                     print(f"\n🚀 Reading Geometry {i} at {hex(geometry_ptr)}")
+                    vertex_buffer_ptr = self.read_u16_from_stream(f)
+                    print(f"  Vertex Buffer Pointer: {hex(vertex_buffer_ptr)}")
 
                     geo_vtable = self.jump_and_read_u32(f, geometry_ptr)
                     print(f"  Geometry VTable: {hex(geo_vtable)}")
@@ -226,8 +231,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     geometry_unk_2 = self.read_u32_from_stream(f)
                     print(f"  Geometry Unknown 2: {geometry_unk_2}")
 
-                    vertex_buffer_ptr = self.read_u16_from_stream(f)
-                    print(f"  Vertex Buffer Pointer: {hex(vertex_buffer_ptr)}")
+                    geo_vertex_buffer_ptr = self.read_u16_from_stream(f)
+                    print(f"  Vertex Buffer Pointer: {hex(geo_vertex_buffer_ptr)}")
+                    geometry_vertex_buffers.append(geo_vertex_buffer_ptr)
 
                     f.seek(2, 1)
 
@@ -260,8 +266,8 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     face_count = self.read_u32_from_stream(f)
                     print(f"  Geometry Face Count: {face_count}")
 
-                    vertex_count = self.read_u16_from_stream(f)
-                    print(f"  Geometry Vertex Count: {vertex_count}")
+                    geo_vertex_count = self.read_u16_from_stream(f)
+                    print(f"  Geometry Vertex Count: {geo_vertex_count}")
 
                     geo_primitive_type = self.read_u16_from_stream(f)
                     print(f"  Primitive Type: {geo_primitive_type}")
@@ -289,6 +295,74 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print("\n ...GEOMETRIES SUCCESSFULLY READ...")
                     print("--------------------------------------------------\n")
                     
+                    print("\n------------------------------------------------")
+                    print("\n ...BEGIN READING VERTEX BUFFERS...")
+                    print("--------------------------------------------------\n")
+                    
+                    for i, vtx_ptr in enumerate(geometry_vertex_buffers):
+                        print(f"📍 Saved Vertex Buffer Pointer {i}: {hex(vtx_ptr)}")
+                        print(f"\n🚀 Jumping to Vertex Buffer {i} at {hex(vtx_ptr)}")
+                        f.seek(vtx_ptr + 12)
+                        vertex_buffer_vtable = self.read_u32_from_stream(f)
+                        vertex_count = self.read_u16_from_stream(f)
+
+                        print(f"  Vertex Buffer VTable: {hex(vertex_buffer_vtable)}")
+                        print(f"  Vertex Count: {vertex_count}")
+                        
+                        vertex_buffer_unk_1 = self.read_u16_from_stream(f)
+                        print(f" Vertex Buffer Unknown 1: {vertex_buffer_unk_1}")
+                        
+                        vertexdata_offsets = []
+                        
+                        dataoffset_to_vertexdata_1 = self.read_u32_from_stream(f)
+                        print(f" Data offset to vertex data: {hex(dataoffset_to_vertexdata_1)}")
+                        f.seek(2, 1)
+                        
+                        vertex_buffer_stride = self.read_u16_from_stream(f)
+                        print(f" Vertex buffer stride: {vertex_buffer_stride}")
+                        
+                        vertex_declaration_offset = self.read_u16_from_stream(f)
+                        print(f" Vertex declaration offset: {hex(vertex_declaration_offset)}")
+                        f.seek(2, 1)
+                        
+                        vertex_buffer_unk_2 = self.read_u32_from_stream(f)
+                        print(f" Vertex Buffer Unknown 2: {vertex_buffer_unk_2}")
+                        
+                        dataoffset_to_vertexdata_2 = self.read_u32_from_stream(f)
+                        print(f" Data offset to vertex data: {hex(dataoffset_to_vertexdata_2)}")
+                        vertexdata_offsets.append(dataoffset_to_vertexdata_2)
+                        f.seek(2, 1)
+                        
+
+                        print("\n------------------------------------------------")
+                        print("\n ...DONE DISPLAYING VERTEX BUFFER POINTERS...")
+                        print("--------------------------------------------------\n")
+                        
+                        # --- After displaying vertex buffer pointers ---
+                        print("\n------------------------------------------------")
+                        print("\n ...BEGIN READING VERTEX DATA AND INDEX DATA...")
+                        print("--------------------------------------------------\n")
+                        
+                        for i, vtx_offset in enumerate(vertexdata_offsets):
+                            print(f"📍 Saved Vertex Offset Cock and balls {i}: {hex(vtx_offset)}")
+                            print(f"\n🚀 Jumping to Vertex Offset {i} at {hex(vtx_offset)}") # Need to prevent this from reading dummys
+                            
+                            real_offset = vtx_offset - 0x60000000
+                            f.seek(real_offset)
+                            
+                            for v in range(vertex_count):
+                                x = struct.unpack('<f', f.read(4))[0]
+                                y = struct.unpack('<f', f.read(4))[0]
+                                z = struct.unpack('<f', f.read(4))[0]
+
+                                print(f"    Vertex {v}: x={x:.6f}, y={y:.6f}, z={z:.6f}")
+                                
+
+
+
+
+
+
 
             return {'FINISHED'}
 

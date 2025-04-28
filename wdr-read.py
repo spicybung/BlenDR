@@ -3,6 +3,7 @@
 # Test read for .wdr format files.
 
 import bpy
+import zlib
 import struct
 from bpy.props import StringProperty
 from bpy.types import Operator
@@ -47,10 +48,36 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
     def execute(self, context):
         try:
             with open(self.filepath, "rb") as f:
-                f.seek(12)
-                header = f.read(0x94)
-                model_collection = f.read(0x10)
+                # Read RSC Header
+                magic = f.read(3)  # "RSC"
+                file_type = f.read(1)  # e.g., 05 (WDR)
+                version = struct.unpack('<I', f.read(4))[0]  # (Version, like 110)
+                physical_size = struct.unpack('<H', f.read(2))[0]  # (compressed)
+                virtual_size = struct.unpack('<H', f.read(2))[0]   # (uncompressed)
 
+                print("\n📦 RSC HEADER")
+                print(f"  Magic:         {magic.decode(errors='ignore')}")
+                print(f"  File Type:     {file_type.hex()}")
+                print(f"  Version:       {version}")
+                print(f"  Physical Size: {physical_size} bytes (compressed)")
+                print(f"  Virtual Size:  {virtual_size} bytes (decompressed)")
+
+                # Read CPU data
+                cpu_data = f.read()
+
+                # Decompress CPU data
+                try:
+                    print("\n🗜️  Attempting decompression...")
+                    cpu_data = zlib.decompress(cpu_data)
+                    print("🟢 Decompression successful.")
+                except zlib.error:
+                    print("⚪ File is not compressed, using raw data.")
+
+                # Access CPU memory
+                cpu_memory = memoryview(cpu_data)
+
+                # Now read WDR header
+                header = cpu_memory[:0x94]
 
                 u8 = self.read_u8
                 u16 = self.read_u16

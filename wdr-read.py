@@ -1,3 +1,7 @@
+# BlenDR stuff - WIP!
+# spicybung 2024 - 2025
+# Test read for .wdr format files.
+
 import bpy
 import struct
 from bpy.props import StringProperty
@@ -47,6 +51,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 header = f.read(0x94)
                 model_collection = f.read(0x10)
 
+
                 u8 = self.read_u8
                 u16 = self.read_u16
                 u32 = self.read_u32
@@ -89,12 +94,19 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 print(f"  z: {f32(header, 0x58)}")
                 print(f"  w: {f32(header, 0x5C)}\n")
 
+
                 print("📊 Object Metadata")
-                print(f"  ObjectCount (0x60):     {hex(u32(header, 0x60))}")
+                object_count = u32(header, 0x60)
+                print(f"  ObjectCount (0x60):     {hex(object_count)}")
                 print(f"  Unknown (0x64):         {hex(u32(header, 0x64))}")
                 print(f"  Unknown (0x68):         {hex(u32(header, 0x68))}")
                 print(f"  Unknown (0x6C):         {hex(u32(header, 0x6C))}")
                 print(f"  Unknown Float (0x70):   {f32(header, 0x70)}")
+                
+                object_vertices = [[] for _ in range(object_count)]
+                geometry_counts = []
+                geometries_read = 0
+                current_object = 0
 
                 print(f"  Unknown (0x74–0x7F):")
                 print(f"    [0x74]: {hex(u32(header, 0x74))}")
@@ -111,12 +123,10 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                 print("🔚 End of Header (0x90):")
                 print(f"  {hex(u32(header, 0x90))}")
-                print("--------------------------------------------------\n") # Rubbish - but we know what to do now
-                print("\n------------------------------------------------")
-                print("\n ...BEGIN READING MODELCOLLECTION SECTION...")
+                print("\n------------------------------------------------") # Rubbish - but we know what to do now
+                print("\n ... READING MODELCOLLECTION SECTION...")
                 print("--------------------------------------------------\n")
-                
-                # Logic for model collection pointer
+
                 f.seek(0x4C)
                 ptr_to_modelcollection_ptr = self.read_u16_from_stream(f)
                 print("📂 Model Collection Section")
@@ -128,9 +138,8 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                 next_value_u16 = self.jump_and_read_u16(f, model_section_u16)
                 print(f"  Value at Model Offset {hex(model_section_u16)}:       {hex(next_value_u16)}")
-                print("--------------------------------------------------\n")
                 print("\n------------------------------------------------")
-                print("\n ...BEGIN READING MODEL SECTION...")
+                print("\n ... READING MODEL SECTION...")
                 print("--------------------------------------------------\n")
                 
 
@@ -180,6 +189,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 # Read GeometryCount (2 bytes)
                 geometry_count = self.read_u16_from_stream(f)
                 print(f"🔢 GeometryCount (0x1A): {geometry_count}")
+                geometry_counts.append(geometry_count)
 
                 # Read Padding (4 bytes)
                 padding = self.read_u32_from_stream(f)
@@ -212,7 +222,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     
                 print("--------------------------------------------------\n")
                 print("\n------------------------------------------------")
-                print("\n ...BEGIN READING GEOMETRIES...")
+                print("\n ... READING GEOMETRIES...")
                 print("--------------------------------------------------\n")
                 
                 
@@ -292,11 +302,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                     print("--------------------------------------------------\n")
                     print("\n------------------------------------------------")
-                    print("\n ...GEOMETRIES SUCCESSFULLY READ...")
+                    print("\n ... GEOMETRIES SUCCESSFULLY READ...")
                     print("--------------------------------------------------\n")
                     
                     print("\n------------------------------------------------")
-                    print("\n ...BEGIN READING VERTEX BUFFERS...")
+                    print("\n ... READING VERTEX BUFFERS...")
                     print("--------------------------------------------------\n")
                     
                     for i, vtx_ptr in enumerate(geometry_vertex_buffers):
@@ -305,6 +315,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                         f.seek(vtx_ptr + 12)
                         vertex_buffer_vtable = self.read_u32_from_stream(f)
                         vertex_count = self.read_u16_from_stream(f)
+                        
+                        if vertex_count <= 20 or vertex_stride == 0:
+                            print(f"⚠️ Skipping dummy vertex buffer at {hex(vtx_ptr)} (vertex count {vertex_count})")
+                            continue  # Don't import this dummy
+
 
                         print(f"  Vertex Buffer VTable: {hex(vertex_buffer_vtable)}")
                         print(f"  Vertex Count: {vertex_count}")
@@ -332,34 +347,77 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                         print(f" Data offset to vertex data: {hex(dataoffset_to_vertexdata_2)}")
                         vertexdata_offsets.append(dataoffset_to_vertexdata_2)
                         f.seek(2, 1)
-                        
 
                         print("\n------------------------------------------------")
-                        print("\n ...DONE DISPLAYING VERTEX BUFFER POINTERS...")
+                        print("\n ... READING VERTEX DECLARATION...")
                         print("--------------------------------------------------\n")
                         
-                        # --- After displaying vertex buffer pointers ---
+                        # Important: reading vertex declaration
+                        f.seek(vertex_declaration_offset + 12)
+
+                        usage_flags = self.read_u32_from_stream(f)
+                        stride = self.read_u16_from_stream(f)
+                        alternate_decoder = self.read_u8(f.read(1), 0)  # 1 byte
+                        type_ = self.read_u8(f.read(1), 0)              # 1 byte
+                        unused1 = self.read_u32_from_stream(f)
+                        unused2 = self.read_u32_from_stream(f)
+                        
+                        print("\n🎨 Vertex Declaration Data:")
+                        print(f"  UsageFlags:        {hex(usage_flags)}")
+                        print(f"  Stride:            {stride}")
+                        print(f"  AlternateDecoder:  {alternate_decoder}")
+                        print(f"  Type:              {type_}")
+                        print(f"  Unused1:           {hex(unused1)}")
+                        print(f"  Unused2:           {hex(unused2)}")
+
                         print("\n------------------------------------------------")
-                        print("\n ...BEGIN READING VERTEX DATA AND INDEX DATA...")
+                        print("\n ... VERTEX DECLARATION SUCCESSFULLY READ...")
                         print("--------------------------------------------------\n")
                         
-                        for i, vtx_offset in enumerate(vertexdata_offsets):
+                        print("\n------------------------------------------------")
+                        print("\n ... READING VERTEX DATA AND INDEX DATA...")
+                        print("--------------------------------------------------\n")
+                        
+                    for i, vtx_offset in enumerate(vertexdata_offsets):
                             print(f"📍 Saved Vertex Offset Cock and balls {i}: {hex(vtx_offset)}")
                             print(f"\n🚀 Jumping to Vertex Offset {i} at {hex(vtx_offset)}") # Need to prevent this from reading dummys
                             
                             real_offset = vtx_offset - 0x60000000
                             f.seek(real_offset)
-                            
+
+                            vertices = []
+
                             for v in range(vertex_count):
                                 x = struct.unpack('<f', f.read(4))[0]
                                 y = struct.unpack('<f', f.read(4))[0]
                                 z = struct.unpack('<f', f.read(4))[0]
-
-                                print(f"    Vertex {v}: x={x:.6f}, y={y:.6f}, z={z:.6f}")
                                 
+                                vertices.append((x, y, z))
+
+                                if vertex_stride > 12:
+                                    f.seek(vertex_stride - 12, 1)
+
+                            # After all vertices per geometry are read:
+                            object_vertices[current_object].extend(vertices)
+
+                            print(f"🧱 Assigned {len(vertices)} vertices to Object {current_object}")
 
 
+                            print(f"    Vertex {v}: x={x:.6f}, y={y:.6f}, z={z:.6f}")
+                            
+                    for i, vertices in enumerate(object_vertices):
+                            if not vertices:
+                                continue  # If no vertices, skip dummy?
 
+                            mesh = bpy.data.meshes.new(f"WDR_Mesh_{i}")
+                            obj = bpy.data.objects.new(f"WDR_Object_{i}", mesh)
+                            bpy.context.collection.objects.link(obj)
+
+                            mesh.from_pydata(vertices, [], [])
+                            mesh.update()
+
+                            print(f"🚀 Created WDR Object {i} with", len(vertices), "vertices.")
+                        
 
 
 

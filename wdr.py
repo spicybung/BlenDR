@@ -13,7 +13,7 @@ from bpy_extras.io_utils import ImportHelper
 
 class IMPORT_OT_wdr_reader(Operator, ImportHelper):
     bl_idname = "import_scene.wdr_reader"
-    bl_label = "Read WDR"
+    bl_label = "Import WDR(.wdr)"
     bl_options = {'REGISTER', 'UNDO'}
     filename_ext = ".wdr"
 
@@ -74,8 +74,8 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 # Read RSC Header
                 magic_dword = f.read(3)  # 'RSC'
                 file_type = f.read(1)  # e.g., 05
-                version = struct.unpack('<I', f.read(4))[0]
-                flags = struct.unpack('<I', f.read(4))[0]
+                version = struct.unpack('<I', f.read(4))[0] # Version 110 for IV
+                flags = struct.unpack('<I', f.read(4))[0] # Physical + graphics size
 
                 def get_system_mem_size(flags: int) -> int:
                     return (flags & 0x7FF) << (((flags >> 11) & 0xF) + 8)
@@ -232,6 +232,10 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     primitive_type = read_u16(s)
                     unk9 = read_u32(s)
                     vertex_stride = read_u16(s)
+                    
+                    vertex_data_length = vertex_count * vertex_stride
+                    print(f"    Vertex Data Length: {vertex_data_length} bytes")
+
                     unk10 = read_u16(s)
                     unk11 = read_u32(s)
                     unk12 = read_u32(s)
@@ -296,6 +300,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print(f"      Unknown 1:     0x{unk1:08X}")
                     print(f"      Unknown 2:     0x{unk2:08X}")
                     
+                    
                     real_vtx_offset = vb_data_offset1
                     s.seek(real_vtx_offset)
                     data = memoryview(cpu_data)
@@ -304,9 +309,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     def read_u8_buf(buf, offset): return struct.unpack_from('<B', buf, offset)[0]
 
                     verts = []
+                    total_vertex_count_so_far = 0
 
+                    
                     for v in range(vb_vert_count):
-                        vb_base = real_vtx_offset + system_mem  # Thanks to Utopia for offset + physical size + stride
+                        vb_base = real_vtx_offset + system_mem  # Thanks to Utopiadeffered for offset + stride + physical size
                         if stride == 36:
                             base = vb_base + (v * vertex_stride)
                             px = read_f32_buf(data, base + 0)
@@ -335,23 +342,68 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                               
                         verts.append((px, py, pz))
                         
-                        object_vertices[current_object].extend(verts)
+                    # 🧩 Full IndexBuffer (0x40 bytes total)
+                    s.seek(index_buffer_ptr)
+                    ib_vtable = read_u32(s)            # 0x00
+                    ib_index_count = read_u32(s)       # 0x04
+                    ib_data_offset = read_data_offset(s)  # 0x08
+                    ib_unknown1 = read_u32(s)          # 0x0C
+                    ib_padding = s.read(0x30)          # 0x10 - 0x3F (padding)
+
+                    print(f"    🔸 Full IndexBuffer Read:")
+                    print(f"      VTable:       0x{ib_vtable:08X}")
+                    print(f"      Index Count:  {ib_index_count}")
+                    print(f"      Data Offset:  0x{ib_data_offset:08X}")
+                    print(f"      Unknown 1:    0x{ib_unknown1:08X}")
+                    print(f"      Padding:      {' '.join(f'{b:02X}' for b in ib_padding)}")
+
+                    indices = []
+                    index_data_offset = ib_data_offset + system_mem  # Read like VertexBuffer/VertexData?
+                    vertex_offset_base = total_vertex_count_so_far
+                    print(f"     New Data Offset:  0x{index_data_offset:08X}")
+                    for tri_index in range(ib_index_count // 3):  # Tristrips
+                        base = index_data_offset + (tri_index * 6)
+
+                        offset_i0 = base + 0
+                        offset_i1 = base + 2
+                        offset_i2 = base + 4
+
+
+                        print(f"🔍 Triangle {tri_index}: reading indices from offsets {offset_i0:#X}, {offset_i1:#X}, {offset_i2:#X}")
+
+                        i0 = struct.unpack_from('<H', data, offset_i0)[0]
+                        i1 = struct.unpack_from('<H', data, offset_i1)[0]
+                        i2 = struct.unpack_from('<H', data, offset_i2)[0]
+
+                        print(f"    Indices = ({i0}, {i1}, {i2})")
+
+                        i0_local = i0 - vertex_offset_base
+                        i1_local = i1 - vertex_offset_base
+                        i2_local = i2 - vertex_offset_base
+                        indices.append((i0_local, i1_local, i2_local))
+
+
+                    print(f"      ✅ Read {len(indices)} triangle faces from index data.")
+                        
+                    object_vertices[current_object].extend(verts)
+                    total_vertex_count_so_far += len(verts)
+
                         
                     for i, verts in enumerate(object_vertices):
-                            if not verts:
-                                continue  # If no vertices, skip dummy?
+                        if not verts:
+                            continue
 
-                            mesh = bpy.data.meshes.new(f"WDR_Mesh_{i}")
-                            obj = bpy.data.objects.new(f"WDR_Object_{i}", mesh)
-                            bpy.context.collection.objects.link(obj)
+                        base_name = os.path.splitext(filename)[0]
+                        mesh = bpy.data.meshes.new(f"{base_name}_Mesh_{i}")
+                        obj = bpy.data.objects.new(f"{base_name}_Object_{i}", mesh)
 
-                            mesh.from_pydata(verts, [], [])
-                            mesh.update()
+                        bpy.context.collection.objects.link(obj)
 
-                            print(f"🚀 Created WDR Object {i} with", len(verts), "vertices.")
+                        tris = indices
+                        mesh.from_pydata(verts, [], tris)
+                        mesh.update()
 
-
-
+                        print(f"🚀 Created {base_name}_Object_{i} with {len(verts)} vertices and {len(tris)} triangles.")
 
             
             return {'FINISHED'}
@@ -362,7 +414,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
             return {'CANCELLED'}
 
 def menu_func_import(self, context):
-    self.layout.operator(IMPORT_OT_wdr_reader.bl_idname, text="Read WDR (.wdr)")
+    self.layout.operator(IMPORT_OT_wdr_reader.bl_idname, text="Windows Drawable[x32](.WDR)")
 
 def register():
     bpy.utils.register_class(IMPORT_OT_wdr_reader)
@@ -374,6 +426,3 @@ def unregister():
 
 if __name__ == "__main__":
     register()
-
-
-            

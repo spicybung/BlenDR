@@ -14,12 +14,13 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import bpy
 import os
-from bpy_extras.io_utils import ImportHelper
+import bpy
 from bpy.types import Operator
+from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty, BoolProperty, CollectionProperty
 
+#######################################################
 class ImportMeshWithODR(Operator, ImportHelper):
     bl_idname = "import_scene.mesh_with_odr"
     bl_label = "Import Mesh with ODR Data"
@@ -36,7 +37,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
         description="If enabled, limits material names to 20 characters",
         default=True
     )
-
+    #######################################################
     def execute(self, context):
         directory = os.path.dirname(self.filepath)
         
@@ -98,7 +99,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
                 self.report({'ERROR'}, f"Error reading file {mesh_filename}: {e}")
 
         return {'FINISHED'}
-
+    #######################################################
     def ensure_valid_vertices(self, vertices):
         """Ensure vertices are valid and add placeholders for missing data."""
         valid_vertices = [v for v in vertices if isinstance(v, tuple) and len(v) == 3 and all(isinstance(coord, float) for coord in v)]
@@ -114,7 +115,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
                 print(f"Replaced invalid vertex at index {i} with placeholder {placeholder}")
 
         return vertices
-
+    #######################################################
     def ensure_valid_faces(self, faces, vertex_count):
         """Ensure faces are valid and add placeholders for missing data."""
         valid_faces = [f for f in faces if isinstance(f, tuple) and len(f) == 3 and all(isinstance(idx, int) and idx < vertex_count for idx in f)]
@@ -129,7 +130,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
                 print(f"Replaced invalid face at index {i} with placeholder face (0, 1, 2)")
 
         return faces
-
+    #######################################################
     def parse_mesh_file(self, filepath):
         """Parse .mesh file and return vertices, faces, and materials."""
         vertices = []
@@ -187,7 +188,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
                         faces.append((face_indices[0], face_indices[1], face_indices[2]))
 
         return vertices, faces, materials
-
+    #######################################################
     def parse_odr_file(self, filepath):
         """Parse .odr file and return relevant data for materials and shaders."""
         data = {
@@ -256,7 +257,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
                     data["radius"] = float(line.split()[1])
 
         return data
-
+    #######################################################
     def apply_data_to_mesh(self, mesh_obj, data, collection):
         """Applies parsed ODR data to the selected mesh object in Blender."""
         for shader_info in data.get('shaders', []):
@@ -286,7 +287,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
                 ]
                 for coord in bb_verts:
                     empty = bpy.ops.object.empty_add(type='PLAIN_AXES', location=coord)
-
+    #######################################################
     def create_material(self, shader_info):
         material_name = shader_info["material_name"]
         if material_name in bpy.data.materials:
@@ -307,7 +308,7 @@ class ImportMeshWithODR(Operator, ImportHelper):
         material.node_tree.links.new(shader.outputs["BSDF"], material_output.inputs["Surface"])
 
         return material
-
+    #######################################################
 def menu_func_import(self, context):
     self.layout.operator(ImportMeshWithODR.bl_idname, text="Import Mesh with ODR Data")
 

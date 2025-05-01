@@ -14,52 +14,52 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import os
 import io
+import os
 import bpy
 import zlib
 import struct
-from bpy.props import StringProperty
 from bpy.types import Operator
+from bpy.props import StringProperty
 from bpy_extras.io_utils import ImportHelper
 
+#######################################################
 class IMPORT_OT_wdr_reader(Operator, ImportHelper):
     bl_idname = "import_scene.wdr_reader"
     bl_label = "Import WDR(.wdr)"
     bl_options = {'REGISTER', 'UNDO'}
     filename_ext = ".wdr"
-
+    #######################################################
     filter_glob: StringProperty(default="*.wdr", options={'HIDDEN'})
 
     
     #Helper Functions with Stupid Names
     def read_u8(self, data, offset):
         return struct.unpack_from('<B', data, offset)[0]
-
+    #######################################################
     def read_u16(self, data, offset):
         return struct.unpack_from('<H', data, offset)[0]
-
+    #######################################################
     def read_u32(self, data, offset):
         return struct.unpack_from('<I', data, offset)[0]
-
+    #######################################################
     def read_f32(self, data, offset):
         return struct.unpack_from('<f', data, offset)[0]
-
+    #######################################################
     def read_u16_from_stream(self, stream):
         return struct.unpack('<H', stream.read(2))[0]
-
+    #######################################################
     def read_u32_from_stream(self, stream):
         return struct.unpack('<I', stream.read(4))[0]
-
+    #######################################################
     def jump_and_read_u16(self, stream, offset):
         stream.seek(offset + 12)
         return self.read_u16_from_stream(stream)
-
+    #######################################################
     def jump_and_read_u32(self, stream, offset):
         stream.seek(offset + 12)
         return self.read_u32_from_stream(stream)
-    
-    # Execute
+    #######################################################
     def execute(self, context):
         def read_u8(s): return struct.unpack('<B', s.read(1))[0]
         def read_u16(s): return struct.unpack('<H', s.read(2))[0]
@@ -124,6 +124,10 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                 s = io.BytesIO(cpu_data)
 
+
+                print("--------------------------------------------------")
+                print("\n ... READING WDR HEADER...")
+                print("--------------------------------------------------")
                 vtable = read_u32(s)
                 header_length = read_u8(s)
                 s.read(3)
@@ -179,6 +183,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 print(f"  Reserved:      {' '.join(f'{b:02X}' for b in raw88)}")
                 print(f"  End Header:    0x{end_header:08X}")
 
+                print("--------------------------------------------------")
+                print("\n ... READING MODELCOLLECTION...")
+                print("--------------------------------------------------")
                 s.seek(0x40)
                 model_collection_offset = read_data_offset(s)
                 s.seek(model_collection_offset)
@@ -197,6 +204,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 s.seek(model_pointer_offset_ptr)
                 model_offset = read_data_offset(s)
 
+                print("--------------------------------------------------")
+                print("\n ... READING MODEL SECTION...")
+                print("--------------------------------------------------")
                 s.seek(model_offset)
                 model_vtable = read_u32(s)
                 geometry_collection_offset = read_data_offset(s)
@@ -221,6 +231,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 print(f"  Geometry Count:     {geometry_count}")
                 print(f"  Padding:            0x{model_padding:08X}")
 
+                print("--------------------------------------------------")
+                print("\n ... READING GEOMETRY...")
+                print("--------------------------------------------------")
                 print("\n📏 Geometries:")
                 s.seek(geometry_collection_offset)
                 geometry_offsets = [read_data_offset(s) for _ in range(number_of_geometries)]
@@ -265,6 +278,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print(f"    Vertex Stride:   {vertex_stride}")
                     print(f"    Padding:         0x{padding:08X}")
 
+                    print("--------------------------------------------------")
+                    print("\n ... READING VERTEX BUFFER...")
+                    print("--------------------------------------------------")
                     s.seek(vertex_buffer_ptr)
                     vb_vtable = read_u32(s)
                     vb_vert_count = read_u16(s)
@@ -284,6 +300,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print(f"      Decl Offset:   0x{vb_decl_offset:08X}")
                     print(f"      Data Offset 2: 0x{vb_data_offset2:08X}")
 
+                    print("--------------------------------------------------")
+                    print("\n ... READING INDEX BUFFER...")
+                    print("--------------------------------------------------")
                     s.seek(index_buffer_ptr)
                     ib_vtable = read_u32(s)
                     ib_index_count = read_u32(s)
@@ -296,6 +315,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print(f"      Data Offset:   0x{ib_data_offset:08X}")
                     print(f"      Unknown 1:   0x{ib_unknown1:08X}")
 
+                    print("--------------------------------------------------")
+                    print("\n ... READING VERTEX DECLARATION...")
+                    print("--------------------------------------------------")
                     s.seek(vb_decl_offset)
                     usage_flags = read_u32(s)
                     stride = read_u16(s)
@@ -312,7 +334,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print(f"      Unknown 1:     0x{unk1:08X}")
                     print(f"      Unknown 2:     0x{unk2:08X}")
                     
-                    
+                    print("--------------------------------------------------")
+                    print("\n ... READING VERTEX DATA...")
+                    print("--------------------------------------------------")
                     real_vtx_offset = vb_data_offset1
                     s.seek(real_vtx_offset)
                     data = memoryview(cpu_data)
@@ -354,7 +378,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                               
                         verts.append((px, py, pz))
                         
-                    # 🧩 Full IndexBuffer (0x40 bytes total)
+                    print("--------------------------------------------------")
+                    print("\n ... READING INDEX DATA...")
+                    print("--------------------------------------------------")
                     s.seek(index_buffer_ptr)
                     ib_vtable = read_u32(s)            # 0x00
                     ib_index_count = read_u32(s)       # 0x04
@@ -424,7 +450,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
         except Exception as e:
             self.report({'ERROR'}, f"Failed to parse WDR: {e}")
             return {'CANCELLED'}
-
+    #######################################################
 def menu_func_import(self, context):
     self.layout.operator(IMPORT_OT_wdr_reader.bl_idname, text="Windows Drawable[x32](.WDR)")
 

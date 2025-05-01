@@ -304,15 +304,9 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     def read_u8_buf(buf, offset): return struct.unpack_from('<B', buf, offset)[0]
 
                     verts = []
-                    
-                    reader = get_stride_reader(stride)
-                    if not reader:
-                        print(f"⛔ Unsupported vertex stride: {stride}")
-                        continue
 
-                    # Already inside your loop
                     for v in range(vb_vert_count):
-                        vb_base = real_vtx_offset + system_mem  # Credits to Utopia for offset + stride + physical size
+                        vb_base = real_vtx_offset + system_mem  # Thanks to Utopia for offset + physical size + stride
                         if stride == 36:
                             base = vb_base + (v * vertex_stride)
                             px = read_f32_buf(data, base + 0)

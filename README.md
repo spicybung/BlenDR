@@ -9,6 +9,7 @@ An add-on for importing and exporting RAGE OpenFormat files(WIP)!
 
 ## Features
 BlenDRs current features:
-Import & Export IV .odr/mesh
-Import IV .wdr(WIP)
+
+[X]Import & Export IV .odr/mesh
+[ ]Import IV .wdr(WIP)
 

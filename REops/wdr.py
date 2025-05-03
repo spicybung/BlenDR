@@ -168,6 +168,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 obj_count = read_u32(s)
                 
                 object_vertices = [[] for _ in range(obj_count)]
+                object_indices = [[] for _ in range(obj_count)]
                 geometry_counts = []
                 geometries_read = 0
                 current_object = 0
@@ -427,13 +428,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                         i0 = struct.unpack_from('<H', data, offset_i0)[0]
                         i1 = struct.unpack_from('<H', data, offset_i1)[0]
                         i2 = struct.unpack_from('<H', data, offset_i2)[0]
+                        indices.append((i0, i1, i2))
 
                         print(f"    Indices = ({i0}, {i1}, {i2})")
 
-                        i0_local = i0 - vertex_offset_base
-                        i1_local = i1 - vertex_offset_base
-                        i2_local = i2 - vertex_offset_base
-                        indices.append((i0_local, i1_local, i2_local))
+                        
 
 
                     print(f"      ✅ Read {len(indices)} triangle faces from index data.")

@@ -61,12 +61,15 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
         return self.read_u32_from_stream(stream)
     #######################################################
     def execute(self, context):
+        #######################################################
         def read_u8(s): return struct.unpack('<B', s.read(1))[0]
+        #######################################################
         def read_u16(s): return struct.unpack('<H', s.read(2))[0]
+        #######################################################
         def read_u32(s): return struct.unpack('<I', s.read(4))[0]
-        def read_u64(s): return struct.unpack('<Q', s.read(8))[0]
+        #######################################################
         def read_f32(s): return struct.unpack('<f', s.read(4))[0]
-        def read_f64(s): return struct.unpack('<d', s.read(8))[0]
+        #######################################################
     
         def read_data_offset(s):
             value = read_u32(s)
@@ -89,25 +92,26 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 version = struct.unpack('<I', f.read(4))[0] # Version 110 for IV
                 flags = struct.unpack('<I', f.read(4))[0] # Physical + graphics size
 
+                #######################################################
                 def get_memory_sizes(filename, flags):  # Credits to utopiadeferred for memory size functions
                     total_mem_size = get_total_mem_size(flags)
                     system_mem_size = get_system_mem_size(flags)
                     graphics_mem_size = get_graphics_mem_size(flags)
 
                     print(f"Total Memory Size: {total_mem_size} bytes, System Memory Size: {system_mem_size} bytes, Graphics Memory Size: {graphics_mem_size} bytes.")
-
+                #######################################################
                 def get_total_mem_size(flags: int) -> int:
                     return get_system_mem_size(flags) + get_graphics_mem_size(flags)
-
+                #######################################################
                 def get_system_mem_size(flags: int) -> int:
-                    return (flags & 0x7FF) << (((flags >> 11) & 0xF) + 8)
-
+                    return (flags & 0x7FF) << (((flags >> 11) & 0xF) + 8)   # Bitshift to get size
+                #######################################################
                 def get_graphics_mem_size(flags: int) -> int:
                     return ((flags >> 15) & 0x7FF) << (((flags >> 26) & 0xF) + 8)
-                
+                #######################################################
                 def get_graphics_mem_size(flags: int) -> int:
                     return ((flags >> 15) & 0x7FF) << (((flags >> 26) & 0xF) + 8)
-
+                #######################################################
                 system_mem = get_system_mem_size(flags)
                 graphics_mem = get_graphics_mem_size(flags)
                 total_mem_size = system_mem + graphics_mem
@@ -254,6 +258,8 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 s.seek(geometry_collection_offset)
                 geometry_offsets = [read_data_offset(s) for _ in range(number_of_geometries)]
 
+                total_vertex_count_so_far = 0
+
                 for i, geom_offset in enumerate(geometry_offsets):
                     s.seek(geom_offset)
                     geo_vtable = read_u32(s)
@@ -361,7 +367,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     def read_u8_buf(buf, offset): return struct.unpack_from('<B', buf, offset)[0]
 
                     verts = []
-                    total_vertex_count_so_far = 0
+                    
 
                     
                     for v in range(vb_vert_count):
@@ -413,7 +419,6 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                     indices = []
                     index_data_offset = ib_data_offset + system_mem  # Read like VertexBuffer/VertexData?
-                    vertex_offset_base = total_vertex_count_so_far
                     print(f"     New Data Offset:  0x{index_data_offset:08X}")
                     for tri_index in range(ib_index_count // 3):  # Tristrips
                         base = index_data_offset + (tri_index * 6)
@@ -433,14 +438,12 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                         print(f"    Indices = ({i0}, {i1}, {i2})")
 
                         
+                        object_vertices[current_object] = verts
+                        object_indices[current_object] = indices
 
 
                     print(f"      ✅ Read {len(indices)} triangle faces from index data.")
-                        
-                    object_vertices[current_object].extend(verts)
-                    total_vertex_count_so_far += len(verts)
-
-                        
+                    
                     for i, verts in enumerate(object_vertices):
                         if not verts:
                             continue

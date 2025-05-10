@@ -70,6 +70,71 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
         #######################################################
         def read_f32(s): return struct.unpack('<f', s.read(4))[0]
         #######################################################
+        def ubyte(f):
+            return struct.unpack('<B', f.read(1))
+        #######################################################
+        def ushort(f):
+            return struct.unpack('<H', f.read(2))
+        #######################################################
+        def ufloat(f):
+            return struct.unpack('<f', f.read(4))
+        #######################################################
+        def read_stride28(f):
+            x, y, z = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            r, g, b, a = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            r2, g2, b2, a2 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            u, v = ufloat(f)[0], ufloat(f)[0]
+            return (x, y, z, r, g, b, a, r2, g2, b2, a2, u, v)
+        #######################################################
+        def read_stride36(f):
+            x, y, z = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            nx, ny, nz = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            r, g, b, a = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            u, v = ufloat(f)[0], ufloat(f)[0]
+            return (x, y, z, nx, ny, nz, r, g, b, a, u, v)
+        #######################################################
+        def read_stride44(f):
+            x, y, z = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            bw1, bw2, bw3, bw4 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            bi1, bi2, bi3, bi4 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            nx, ny, nz = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            r, g, b, a = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            u, v = ufloat(f)[0], ufloat(f)[0]
+            return (x, y, z, bw1, bw2, bw3, bw4, bi1, bi2, bi3, bi4, nx, ny, nz, r, g, b, a, u, v)
+        #######################################################
+        def read_stride52(f):
+            x, y, z = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            nx, ny, nz = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            r, g, b, a = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            u, v = ufloat(f)[0], ufloat(f)[0]
+            tx, ty, tz, tw = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            return (x, y, z, nx, ny, nz, r, g, b, a, u, v, tx, ty, tz, tw)
+        #######################################################
+        def read_stride60(f):
+            x, y, z = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            bw1, bw2, bw3, bw4 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            bi1, bi2, bi3, bi4 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            nx, ny, nz = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            r, g, b, a = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            u, v = ufloat(f)[0], ufloat(f)[0]
+            tx, ty, tz, tw = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            return (x, y, z, bw1, bw2, bw3, bw4, bi1, bi2, bi3, bi4, nx, ny, nz, r, g, b, a, u, v, tx, ty, tz, tw)
+        #######################################################
+        def read_stride68(f):
+            x, y, z = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            bw1, bw2, bw3, bw4 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            bi1, bi2, bi3, bi4 = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            nx, ny, nz = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            r, g, b, a = ubyte(f)[0], ubyte(f)[0], ubyte(f)[0], ubyte(f)[0]
+            u, v = ufloat(f)[0], ufloat(f)[0]
+            u2, v2 = ufloat(f)[0], ufloat(f)[0]
+            tx, ty, tz, tw = ufloat(f)[0], ufloat(f)[0], ufloat(f)[0], ufloat(f)[0]
+            return (x, y, z, bw1, bw2, bw3, bw4, bi1, bi2, bi3, bi4, nx, ny, nz, r, g, b, a, u, v, u2, v2, tx, ty, tz, tw)
+        #######################################################
+        def read_indices(f):
+            vertexA, vertexB, vertexC = ushort(f)[0], ushort(f)[0], ushort(f)[0]
+            return (vertexA, vertexB, vertexC)
+        #######################################################
     
         def read_data_offset(s):
             value = read_u32(s)
@@ -119,11 +184,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                 get_memory_sizes(filename, flags)
                 
                 print("--------------------------------------------------")
-                print("\n ... READING RSC HEADER ...")
+                print("\n ... READING RESOURCE(RSC) HEADER ...")
                 print("--------------------------------------------------")
-                print(f"  Magic DWORD:         {magic_dword.decode(errors='ignore')}")
-                print(f"  File Type:     {file_type.hex()}")
-                print(f"  Version:       {version}")
+                print(f"  Magic DWORD:         {magic_dword.decode(errors='ignore')}")  # RSC
+                print(f"  File Type:     {file_type.hex()}")                            # IV = RSC5
+                print(f"  Version:       {version}")                        
                 print(f"  Flags:         {hex(flags)}")
                 print(f"  System Mem:    {system_mem} bytes")
                 print(f"  Graphics Mem:  {graphics_mem} bytes")
@@ -135,11 +200,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                 # Decompress CPU data
                 try:
-                    print("\n🗜️  Attempting decompression...")
-                    cpu_data = zlib.decompress(cpu_data)
+                    print("\n!!  Attempting decompression...")
+                    cpu_data = zlib.decompress(cpu_data)        # IV models = best Zlib compression
                     print("🟢 Decompression successful.")
                 except zlib.error:
-                    print("⚪ File is not compressed, using raw data.")
+                    print("⚪ File was not compressed - raw data used.")
 
                 s = io.BytesIO(cpu_data)
 
@@ -368,29 +433,34 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                     verts = []
                     
+                    from io import BytesIO
 
-                    
+                    stride_map = {
+                        28: read_stride28,
+                        36: read_stride36,
+                        44: read_stride44,
+                        52: read_stride52,
+                        60: read_stride60,
+                        68: read_stride68,
+                    }
+
+                    stride_func = stride_map.get(stride)
+                    if stride_func is None:
+                        raise ValueError(f"Unsupported vertex stride: {stride}")
+
+                    verts = []
+                    vertex_data_start = real_vtx_offset + system_mem
+                    vertex_buffer_slice = cpu_data[vertex_data_start : vertex_data_start + (vb_vert_count * stride)]
+                    vert_stream = BytesIO(vertex_buffer_slice)
+
                     for v in range(vb_vert_count):
-                        vb_base = real_vtx_offset + system_mem  # Thanks to Utopia for offset + stride + physical size
-                        if stride == 36:
-                            base = vb_base + (v * vertex_stride)
-                            px = read_f32_buf(data, base + 0)
-                            py = read_f32_buf(data, base + 4)
-                            pz = read_f32_buf(data, base + 8)
-                            nx = read_f32_buf(data, base + 12)
-                            ny = read_f32_buf(data, base + 16)
-                            nz = read_f32_buf(data, base + 20)
-                            r = read_u8_buf(data, base + 24)
-                            g = read_u8_buf(data, base + 25)
-                            b = read_u8_buf(data, base + 26)
-                            a = read_u8_buf(data, base + 27)
-                            u = read_f32_buf(data, base + 28)
-                            v_ = read_f32_buf(data, base + 32)
-                        elif stride == 52:
-                            tx = read_f32_buf(data, base + 36)
-                            ty = read_f32_buf(data, base + 40)
-                            tz = read_f32_buf(data, base + 44)
-                            tw = read_f32_buf(data, base + 48)
+                        values = stride_func(vert_stream)
+                        x, y, z = values[0], values[1], values[2]  # You can extend this unpacking later
+                        verts.append((x, y, z))
+
+                        # Optional: print debug info for each vertex
+                        print(f"  Vertex {v}: Pos=({x:.5f}, {y:.5f}, {z:.5f}) | Stride {stride} → {len(values)} components")
+
 
 
                         print(f"  Vertex {v}: Pos=({px:.5f}, {py:.5f}, {pz:.5f}) "
@@ -398,17 +468,16 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                               f"Color=({r:02X}, {g:02X}, {b:02X}, {a:02X}) "
                               f"UV=({u:.5f}, {v_:.5f})")
                               
-                        verts.append((px, py, pz))
                         
                     print("--------------------------------------------------")
                     print("\n ... READING INDEX DATA...")
                     print("--------------------------------------------------")
                     s.seek(index_buffer_ptr)
-                    ib_vtable = read_u32(s)            # 0x00
-                    ib_index_count = read_u32(s)       # 0x04
-                    ib_data_offset = read_data_offset(s)  # 0x08
-                    ib_unknown1 = read_u32(s)          # 0x0C
-                    ib_padding = s.read(0x30)          # 0x10 - 0x3F (padding)
+                    ib_vtable = read_u32(s)               # 0x00
+                    ib_index_count = read_u32(s)          # 0x04   Indices Count
+                    ib_data_offset = read_data_offset(s)  # 0x08 Index Buffer Offset
+                    ib_unknown1 = read_u32(s)             # 0x0C   Unknown
+                    ib_padding = s.read(0x30)             # 0x10 - 0x3F (padding)
 
                     print(f"    🔸 Full IndexBuffer Read:")
                     print(f"      VTable:       0x{ib_vtable:08X}")
@@ -418,7 +487,7 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
                     print(f"      Padding:      {' '.join(f'{b:02X}' for b in ib_padding)}")
 
                     indices = []
-                    index_data_offset = ib_data_offset + system_mem  # Read like VertexBuffer/VertexData?
+                    index_data_offset = ib_data_offset + system_mem  # Data offset + physical size, similar to vertex data
                     print(f"     New Data Offset:  0x{index_data_offset:08X}")
                     for tri_index in range(ib_index_count // 3):  # Tristrips
                         base = index_data_offset + (tri_index * 6)

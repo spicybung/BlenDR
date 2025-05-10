@@ -455,18 +455,11 @@ class IMPORT_OT_wdr_reader(Operator, ImportHelper):
 
                     for v in range(vb_vert_count):
                         values = stride_func(vert_stream)
-                        x, y, z = values[0], values[1], values[2]  # You can extend this unpacking later
+                        x, y, z = values[0], values[1], values[2]  # You can extend this unpacking later - though might do myself
                         verts.append((x, y, z))
 
-                        # Optional: print debug info for each vertex
+                        # Optional: print debug info for each vertex, I suppose there's no way to enable/disable prints w/ a top comment
                         print(f"  Vertex {v}: Pos=({x:.5f}, {y:.5f}, {z:.5f}) | Stride {stride} → {len(values)} components")
-
-
-
-                        print(f"  Vertex {v}: Pos=({px:.5f}, {py:.5f}, {pz:.5f}) "
-                              f"Normal=({nx:.3f}, {ny:.3f}, {nz:.3f}) "
-                              f"Color=({r:02X}, {g:02X}, {b:02X}, {a:02X}) "
-                              f"UV=({u:.5f}, {v_:.5f})")
                               
                         
                     print("--------------------------------------------------")

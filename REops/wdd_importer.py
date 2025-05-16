@@ -1,6 +1,13 @@
-# BlenDR - Blender scripts to work with RAGE/openFormat file types 
-# 2024 - 2025 SpicyBung
-
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#      *     *       *                 *       *       *         *    #
+#  *      //   ) )      *        *       //    ) ) //   ) )           #
+#        //___/ /  //  ___   *    __ *  //    / / //___/ /     *      #
+#   *   / __  (   // //___) ) //   ) ) //    / / / ___ (              #
+#      //    ) ) // //       //   / / //    / / //   | |   *      *   #
+#     //____/ / // ((____   //   / / //____/ / //    | |              #
+# BlenDR - Blender scripts to work with R* RAGE/openFormat file types #
+# 2024 - 2025 SpicyBung                                               #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -15,19 +22,21 @@
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 import io
-import os 
-import zlib 
-import struct
-
 import os
-import io
+import bpy
+import zlib
+
+from bpy.types import Operator
+from bpy_extras.io_utils import ImportHelper
+from bpy.props import StringProperty
+
 from ..RELib.wdd import (
     read_wdd_header,
     read_wdd_hashes,
-    read_wdd_wdr_offsets,
-    read_rsc_wdr_data
+    read_wdd_wdr_offsets
 )
-from ..RELib.wdr import IMPORT_OT_wdr_reader
+
+from ..RELib.wdr import read_wdr_dictionary, read_rsc_header_wdd
 
 
 class WDDImporter:
@@ -37,24 +46,68 @@ class WDDImporter:
         self.wdr_offsets = []
 
     def load(self):
-        with open(self.filepath, 'rb') as f:
-            header = read_wdd_header(f)
+        with open(self.filepath, 'rb') as s:
+            rsc_header = s.read(12)
+            raw_data = s.read()
+
+            try:
+                cpu_data = zlib.decompress(raw_data)
+                print("🟢 Decompression successful.")
+            except zlib.error:
+                print("⚪ File was not compressed - raw data used.")
+                cpu_data = raw_data
+
+            full_data = rsc_header + cpu_data
+            system_mem = read_rsc_header_wdd(full_data)
+
+            s = io.BytesIO(cpu_data)
+            header = read_wdd_header(s)
+
             print(f"📦 WDD File: {self.filepath}")
-            print(f"  Hashes: {header['hash_count']}, Pointers: {header['wdr_count']}")
-            print(f"  Hash Offset: 0x{header['hash_offset']:X}")
-            print(f"  Pointer Offset: 0x{header['wdr_ptr_offset']:X}")
+            print(f"  Hashes: {header['hashes_count']}, Pointers: {header['wdrs_count']}")
+            print(f"  Hash Offset: 0x{header['hashes_offset']:X}")
+            print(f"  Pointer Offset: 0x{header['wdrs_offset']:X}")
 
-            self.hashes = read_wdd_hashes(f, header['hash_offset'], header['hash_count'])
-            self.wdr_offsets = read_wdd_wdr_offsets(f, header['wdr_ptr_offset'], header['wdr_count'])
+            hash_offset = header['hashes_offset'] & 0x0FFFFFFF
+            ptr_offset  = header['wdrs_offset']   & 0x0FFFFFFF
 
-            for idx, offset in enumerate(self.wdr_offsets):
-                print(f"\n🧩 WDR {idx} at 0x{offset:X}")
-                wdr_info = read_rsc_wdr_data(f, offset)
+            self.hashes = read_wdd_hashes(s, hash_offset, header['hashes_count'], header['hashes_stride'])
+            self.wdr_offsets = read_wdd_wdr_offsets(s, ptr_offset, header['wdrs_count'])
 
-                print(f"  RSC Version: {wdr_info['version']}, System Mem: {wdr_info['system_mem']} bytes")
-                print(f"  Decompressed Size: {len(wdr_info['data'])} bytes")
 
-                stream = io.BytesIO(wdr_info['data'])
-                wdr_reader = IMPORT_OT_wdr_reader()
-                wdr_reader.filepath = f"{self.filepath}_wdr_{idx}"
-                wdr_reader.execute_from_memory(stream, wdr_info['system_mem'])
+            for idx, raw_offset in enumerate(self.wdr_offsets):
+                adjusted_offset = raw_offset & 0x0FFFFFFF
+                print(f"\n🧩 WDR {idx} at 0x{raw_offset:X} (adjusted: 0x{adjusted_offset:X})")
+
+                wdr_data = cpu_data[adjusted_offset:]
+                wdr_name = f"{os.path.basename(self.filepath)}_wdr_{idx}"
+                read_wdr_dictionary(self, wdr_name, wdr_data, adjusted_offset, system_mem)
+
+                print(f"🔎 Begin reading embedded WDR {idx} at file offset 0x{adjusted_offset:X}")
+
+
+class IMPORT_OT_wdd_importer(Operator, ImportHelper):
+    """Import Windows Drawable Dictionary WDD (.wdd)"""
+    bl_idname = "import_scene.wdd"
+    bl_label = "Import WDD"
+    filename_ext = ".wdd"
+    filter_glob: StringProperty(default="*.wdd", options={'HIDDEN'})
+
+    def execute(self, context):
+        importer = WDDImporter(self.filepath)
+        importer.load()
+        return {'FINISHED'}
+
+
+def menu_func_import(self, context):
+    self.layout.operator(IMPORT_OT_wdd_importer.bl_idname, text="Windows Drawable Dictionary[x32](.wdd)")
+
+
+def register():
+    bpy.utils.register_class(IMPORT_OT_wdd_importer)
+    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+
+
+def unregister():
+    bpy.utils.unregister_class(IMPORT_OT_wdd_importer)
+    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)

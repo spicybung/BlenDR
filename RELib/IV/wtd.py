@@ -25,11 +25,8 @@ import io
 import os
 import bpy
 import zlib 
+import struct 
 
 
 
-def register():
-    print("wdr_importer registered")
-
-def unregister():
-    print("wdr_importer unregistered")
+# Windows Texture Dictionary info is scarce & scattered - but we'll do our best

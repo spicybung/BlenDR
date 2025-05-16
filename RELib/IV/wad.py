@@ -25,11 +25,4 @@ import io
 import os
 import bpy
 import zlib 
-
-
-
-def register():
-    print("wdr_importer registered")
-
-def unregister():
-    print("wdr_importer unregistered")
+import struct 

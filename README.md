@@ -4,14 +4,15 @@
 
 ## Introduction
 
-Finally - a tool for import and exporting RAGE Engine & openFormat file formats(WIP), with planned support for V, RDR, RDR2, and VI! 
+An add-on for importing and exporting RAGE OpenFormat files(WIP)! 
 
 
 ## Features
 BlenDR currently supports the following features:
 
-- [X]Import & Export IV .odr/mesh
-- [X]Import IV .wdr *Partial*
+- [X] Import & Export IV .odr/.mesh
+- [X] Import IV .wdr (WIP parser)
+- [X] Import IV .wdd (WIP parser)
 
 ## Contributing
 

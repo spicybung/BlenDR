@@ -32,12 +32,12 @@ from bpy.types import Operator
 from bpy.props import StringProperty
 from bpy_extras.io_utils import ImportHelper
 
-from ..REutils import rage_iv_helpers as rh
+from ...REutils import rage_iv_helpers as rh
 
 #######################################################
 class IMPORT_OT_wdr_reader(Operator, ImportHelper):
     bl_idname = "import_scene.wdr_reader"
-    bl_label = "Import WDR(.wdr)"
+    bl_label = "Import RAGE IV Drawable (.wdr)"
     bl_options = {'REGISTER', 'UNDO'}
     filename_ext = ".wdr"
     #######################################################

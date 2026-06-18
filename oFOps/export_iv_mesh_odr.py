@@ -31,7 +31,7 @@ from bpy.props import StringProperty, BoolProperty
 #######################################################
 class ExportODR(Operator, ExportHelper):
     bl_idname = "export_scene.odr"
-    bl_label = "Export ODR File"
+    bl_label = "Export OpenIV ODR"
     filename_ext = ".odr"
 
     filter_glob: StringProperty(default="*.odr", options={'HIDDEN'})
@@ -111,15 +111,13 @@ class ExportODR(Operator, ExportHelper):
         return tuple(min_coord), tuple(max_coord)
     #######################################################
 def menu_func_export(self, context):
-    self.layout.operator(ExportODR.bl_idname, text="Export ODR File (.odr)")
+    self.layout.operator(ExportODR.bl_idname, text="OpenIV openFormat Drawable (.odr)")
 
 def register():
     bpy.utils.register_class(ExportODR)
-    bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
 
 def unregister():
     bpy.utils.unregister_class(ExportODR)
-    bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
 
 if __name__ == "__main__":
     register()

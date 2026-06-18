@@ -30,13 +30,13 @@ from bpy.types import Operator
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty
 
-from ..RELib.wdd import (
+from ..RELib.IV.wdd import (
     read_wdd_header,
     read_wdd_hashes,
     read_wdd_wdr_offsets
 )
 
-from ..RELib.wdr import read_wdr_dictionary, read_rsc_header_wdd
+from ..RELib.IV.wdr import read_wdr_dictionary, read_rsc_header_wdd
 
 
 class WDDImporter:
@@ -89,7 +89,7 @@ class WDDImporter:
 class IMPORT_OT_wdd_importer(Operator, ImportHelper):
     """Import Windows Drawable Dictionary WDD (.wdd)"""
     bl_idname = "import_scene.wdd"
-    bl_label = "Import WDD"
+    bl_label = "Import RAGE IV Drawable Dictionary (.wdd)"
     filename_ext = ".wdd"
     filter_glob: StringProperty(default="*.wdd", options={'HIDDEN'})
 
@@ -100,14 +100,12 @@ class IMPORT_OT_wdd_importer(Operator, ImportHelper):
 
 
 def menu_func_import(self, context):
-    self.layout.operator(IMPORT_OT_wdd_importer.bl_idname, text="Windows Drawable Dictionary[x32](.wdd)")
+    self.layout.operator(IMPORT_OT_wdd_importer.bl_idname, text="RAGE IV Drawable Dictionary (.wdd)")
 
 
 def register():
     bpy.utils.register_class(IMPORT_OT_wdd_importer)
-    bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 
 def unregister():
     bpy.utils.unregister_class(IMPORT_OT_wdd_importer)
-    bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)

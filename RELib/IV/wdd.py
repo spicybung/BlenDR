@@ -24,7 +24,7 @@
 import bpy
 import struct
 
-from ..REutils import rage_iv_helpers as rh
+from ...REutils import rage_iv_helpers as rh
 
 #######################################################
 

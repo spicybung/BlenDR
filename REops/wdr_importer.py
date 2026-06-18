@@ -21,15 +21,18 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-import io
-import os
 import bpy
-import zlib 
 
+from ..RELib.IV.wdr import IMPORT_OT_wdr_reader
+
+
+def menu_func_import(self, context):
+    self.layout.operator(IMPORT_OT_wdr_reader.bl_idname, text="RAGE IV Drawable (.wdr)")
 
 
 def register():
-    print("wdr_importer registered")
+    bpy.utils.register_class(IMPORT_OT_wdr_reader)
+
 
 def unregister():
-    print("wdr_importer unregistered")
+    bpy.utils.unregister_class(IMPORT_OT_wdr_reader)

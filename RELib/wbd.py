@@ -1,6 +1,13 @@
-# BlenDR - Blender scripts to work with RAGE/openFormat file types 
-# 2024 - 2025 SpicyBung
-
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
+#      *     *       *                 *       *       *         *    #
+#  *      //   ) )      *        *       //    ) ) //   ) )           #
+#        //___/ /  //  ___   *    __ *  //    / / //___/ /     *      #
+#   *   / __  (   // //___) ) //   ) ) //    / / / ___ (              #
+#      //    ) ) // //       //   / / //    / / //   | |   *      *   #
+#     //____/ / // ((____   //   / / //____/ / //    | |              #
+# BlenDR - Blender scripts to work with R* RAGE/openFormat file types #
+# 2024 - 2025 SpicyBung                                               #
+# # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #
 # This program is free software: you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
 # the Free Software Foundation, either version 3 of the License, or
@@ -16,6 +23,7 @@
 
 import io
 import os
+import bpy
 import struct
 
 def read_u32(f): return struct.unpack('<I', f.read(4))[0]

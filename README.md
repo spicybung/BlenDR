@@ -27,7 +27,7 @@ This project is licensed under the GPL 3.0 License - see the [LICENSE](LICENSE) 
 - Special thanks to the Blender community and contributors.
 - The GTA modding community.
 - The GTA Mods Wiki for being a huge considerate help in figuring things, such as data structures, out.
-- Utopiadeferred - for his help & great engineering knowledge.
+- Utopiadeferred - for his help & great engineering knowledge regarding IV/RDR2 formats.
 - The SkR community, for their insipiration. 
 - Many other special people.
 
